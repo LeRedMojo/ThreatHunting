@@ -1,0 +1,59 @@
+title: NDR Phishing with Plain-Text URL that requires user interaction
+id: 68e02c8f-5c3e-44da-8154-8d095f86e80e
+status: experimental
+description: Detects inbound non-delivery reports (NDRs) containing a plain-text URL that requires the user to copy and paste the URL into their search bar for 'security reasons'. This is a pattern that is not easily caught by filters for the following reasons. First, the email takes advantage of RFC 5321, which requires an NDR to be delivered no matter what. Secondly, a plain text URL raises less suspicion than an actual URL containing malicious elements. Thirdly, it demonstrates social engineering attempts that create a sense of urgency due to keywords such as 'for security reasons' and 'act quickly'. The combination of these elements proves to be a real danger and shows that humans are the weakest link and will always be included in chained techniques like this. This could be fixed by BATV (bounce address tag validation), but not all organisations implement it.
+references: 
+  - https://datatracker.ietf.org/doc/html/rfc5321
+  - https://en.wikipedia.org/wiki/Bounce_Address_Tag_Validation
+author: Joakeem Gustave @LeRedMojo
+date: 2026/05/10
+tags:
+  - attack.initial_access
+  - attack.t1566
+  - attack.t1566.002
+logsource:
+  category: email
+  product: m365
+detection:
+  ndr_indicators:
+    Subject|contains:
+      - "Undeliverable"
+      - "Mail Delivery Failure"
+      - "Returned mail"
+      - "Delivery Status Notification"
+      - "Message non remis"
+      - "Échec de livraison"
+    SenderAddress|contains:
+      - "mailer-daemon"
+      - "postmaster"
+      - "mail-delivery"
+  plain_text_url:
+    Body|re: 'https?://[^\s<>"]+'
+  manual_navigation_instructions:
+    Body|contains:
+      - "copy"
+      - "copier"
+      - "paste"
+      - "coller"
+      - "enter the following"
+      - "taper l'adresse"
+      - "open manually"
+      - "ouvrir manuellement"
+      - "pour des raisons de sécurité"
+      - "for security reasons"
+      - "veuillez copier"
+      - "please copy and paste"
+  enhanced_status_indicator:
+    Body|contains:
+      - "5.1.1"
+      - "5.4.1"
+      - "User unknown"
+      - "Recipient address rejected"
+      - "Adresse de destinataire rejetée"
+  condition: ndr_indicators and plain_text_url and manual_navigation_instructions and enhanced_status_indicator
+falsepositives:
+  - Legitimate IT communication instructing user to manually visit URL.
+  - Auto-responders that mention URLs and use language similar to navigation instructions.
+  - Internal mail tool that generates NDR.
+  - Phishing simulation platforms (KnowBe4, Cofense, Proofpoint Security Awareness) may generate test emails that mimic this pattern; tune by excluding known simulation infrastructure.
+level: medium
